@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
 #include <omp.h>
 
 #define UPTO 10000000
@@ -50,14 +52,23 @@ void openmp_primes(long int n) {
 
 int main()
 {
+	double exectime, exectimepar;
+    struct timeval start, end;
 	printf("Serial and parallel prime number calculations:\n\n");
 	
 	/* Time the following to compare performance 
 	 */
+	gettimeofday(&start, NULL);
 	serial_primes(UPTO);        /* time it */
-	printf("[serial] count = %ld, last = %ld (time = ...)\n", count, lastprime);
+	gettimeofday(&end, NULL);
+	exectime = (double) (end.tv_usec - start.tv_usec) / 1000000 + (double) (end.tv_sec - start.tv_sec);
+	printf("[serial] count = %ld, last = %ld, execution time = %lf sec\n", count, lastprime, exectime);
+
+	gettimeofday(&start, NULL);
 	openmp_primes(UPTO);        /* time it */
-	printf("[openmp] count = %ld, last = %ld (time = ...)\n", count, lastprime);
+	gettimeofday(&end, NULL);
+	exectimepar = (double) (end.tv_usec - start.tv_usec) / 1000000 + (double) (end.tv_sec - start.tv_sec); 
+	printf("[openmp] count = %ld, last = %ld, execution time = %lf sec\n", count, lastprime, exectimepar);
 	
 	return 0;
 }
