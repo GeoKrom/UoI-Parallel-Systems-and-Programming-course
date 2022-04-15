@@ -47,8 +47,29 @@ void openmp_primes(long int n) {
 	 * Parallelize the serial algorithm but you are NOT allowed to change it!
 	 * Don't add/remove/change global variables
 	 */
-}
 
+	#pragma omp parallel private(num,divisor,quotient,remainder) firstprivate(n)
+	{
+		#pragma omp for schedule(static)
+			for (i = 0; i < (n-1)/2; ++i) {    /* For every odd number */
+				num = 2*i + 3;
+
+				divisor = 1;
+				do 
+				{
+					divisor += 2;                  /* Divide by the next odd */
+					quotient  = num / divisor;  
+					remainder = num % divisor;  
+				} while (remainder && divisor <= quotient);  /* Don't go past sqrt */
+
+				if (remainder || divisor == num) /* num is prime */
+				{
+					count++;
+					lastprime = num;
+				}
+			}
+	}
+}
 
 int main()
 {
