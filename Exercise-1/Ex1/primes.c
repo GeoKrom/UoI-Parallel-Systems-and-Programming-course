@@ -1,6 +1,3 @@
-/* Name: Georgios Krommydas
- * A.M.: 3260
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -51,9 +48,9 @@ void openmp_primes(long int n) {
 	 * Don't add/remove/change global variables
 	 */
 	omp_set_num_threads(4);
-	#pragma omp parallel private(num,divisor,quotient,remainder) reduction(+:count)
+	#pragma omp parallel private(num, divisor, quotient, remainder) reduction(+:count)
 	{
-		#pragma omp for schedule(static,1000)
+		#pragma omp for schedule(static, 1000)
 			for (i = 0; i < (n-1)/2; ++i) {    /* For every odd number */
 				num = 2*i + 3;
 
@@ -77,7 +74,7 @@ void openmp_primes(long int n) {
 int main()
 {
 	double exectime, exectimepar;
-    struct timeval start, end;
+    	struct timeval start, end;
 	printf("Serial and parallel prime number calculations:\n\n");
 	
 	/* Time the following to compare performance 
