@@ -1,3 +1,6 @@
+/* Name: Georgios Krommydas
+ * A.M.: 3260
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -47,10 +50,10 @@ void openmp_primes(long int n) {
 	 * Parallelize the serial algorithm but you are NOT allowed to change it!
 	 * Don't add/remove/change global variables
 	 */
-
-	#pragma omp parallel private(num,divisor,quotient,remainder) firstprivate(n)
+	omp_set_num_threads(4);
+	#pragma omp parallel private(num,divisor,quotient,remainder) reduction(+:count)
 	{
-		#pragma omp for schedule(static)
+		#pragma omp for schedule(static,1000)
 			for (i = 0; i < (n-1)/2; ++i) {    /* For every odd number */
 				num = 2*i + 3;
 
