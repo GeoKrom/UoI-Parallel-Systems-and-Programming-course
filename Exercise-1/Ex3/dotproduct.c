@@ -1,6 +1,3 @@
-/* Name: Georgios Krommydas
- * A.M.: 3260
- */
 #include <stdio.h>
 #include <omp.h>
 #include <stdlib.h>
