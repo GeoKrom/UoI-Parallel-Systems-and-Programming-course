@@ -47,4 +47,30 @@ or
 
 # Assignment 2
 
+On this assignment was used a cluster with GPUs to gain information for the system with [CUDA runtime API](https://docs.nvidia.com/cuda/archive/11.6.0/) and use the GPU in order to create parallel a program with [OpenMP API](https://www.openmp.org/).
+
+## First Program
+
+### How to run
+Here is used the NVIDIA compiler.
+
+If the program ends with .cu, then write the command line
+```bash
+    nvcc cuinfo.cu -o cuinfo
+    ./cuinfo
+```
+If the program ends with .c, then write the command line
+```bash
+    nvcc -x cuinfo.cu -o cuinfo
+    ./cuinfo
+```
+
+## Second Program
+
+### How to run
+Here is used the LLVM/Clang compiler
+```bash
+    clang -fopenmp -fopenmp-targets="nvptx64-nvidia-cuda" -lm gaussian-blur.c -o gb
+    ./gb <radius> <input_image.bmp>
+```
 # Assignment 3
