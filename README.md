@@ -61,7 +61,7 @@ If the program ends with .cu, then write the command line
 ```
 If the program ends with .c, then write the command line
 ```bash
-    nvcc -x cuinfo.cu -o cuinfo
+    nvcc -x cuinfo.c -o cuinfo
     ./cuinfo
 ```
 
