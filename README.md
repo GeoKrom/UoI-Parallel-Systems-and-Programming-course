@@ -50,6 +50,7 @@ or
 On this assignment was used a cluster with GPUs to gain information for the system with [CUDA runtime API](https://docs.nvidia.com/cuda/archive/11.6.0/) and use the GPU in order to create parallel a program with [OpenMP API](https://www.openmp.org/).
 
 ## First Program
+The first program was is about finding information for a CUDA device and print its properties
 
 ### How to run
 Here is used the NVIDIA compiler.
