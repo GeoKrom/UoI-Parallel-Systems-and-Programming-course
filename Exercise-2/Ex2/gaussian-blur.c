@@ -1,3 +1,6 @@
+/* Name: Georgios Krommydas
+ * A.M.: 3260
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +45,7 @@ typedef struct img_
 } img_t;
 
 void gaussian_blur_serial(int, img_t *, img_t *);
-void gaussian_blur_omp(int, img_t *, img_t *);
+void gaussian_blur_omp_device(int, img_t *, img_t *);
 
 
 /* START of BMP utility functions */
@@ -239,6 +242,49 @@ void gaussian_blur_serial(int radius, img_t *imgin, img_t *imgout)
 void gaussian_blur_omp_device(int radius, img_t *imgin, img_t *imgout)
 {
 	/* TODO: Implement parallel Gaussian Blur using OpenMP and CUDA parallelization */
+	int i, j;
+	int width = imgin->header.width, height = imgin->header.height;
+	double row, col;
+	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
+
+	#pragma omp target teams distribute parallel for collapse(2)\
+		 num_teams(15) num_threads(256) private(row, col) firstprivate(redSum, greenSum, blueSum, weightSum)\
+		 map(to: imgin->red[0:width],imgin->green[0:width],imgin->blue[0:width])\
+		  map(tofrom: imgout->red[0:width],imgout->green[0:width],imgout->blue[0:width])
+	{
+		for (i = 0; i < height; i++)
+		{
+			for (j = 0; j < width ; j++) 
+			{
+				for (row = i-radius; row <= i + radius; row++)
+				{
+					for (col = j-radius; col <= j + radius; col++) 
+					{
+						int x = clamp(col, 0, width-1);
+						int y = clamp(row, 0, height-1);
+						int tempPos = y * width + x;
+						double square = (col-j)*(col-j)+(row-i)*(row-i);
+						double sigma = radius*radius;
+						double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
+
+						redSum += imgin->red[tempPos] * weight;
+						greenSum += imgin->green[tempPos] * weight;
+						blueSum += imgin->blue[tempPos] * weight;
+						weightSum += weight;
+					}    
+				}
+				imgout->red[i*width+j] = round(redSum/weightSum);
+				imgout->green[i*width+j] = round(greenSum/weightSum);
+				imgout->blue[i*width+j] = round(blueSum/weightSum);
+
+				redSum = 0;
+				greenSum = 0;
+				blueSum = 0;
+				weightSum = 0;
+			}
+		}
+	}
+	
 }
 
 double timeit(void (*func)(), int radius, 
@@ -305,7 +351,7 @@ int main(int argc, char *argv[])
 
 	noextfname = remove_ext(inputfile, '.', '/');
 	sprintf(seqoutfile, "%s-r%d-serial.bmp", noextfname, radius);
-	sprintf(paroutfile_cuda, "%s-r%d-omp-loops.bmp", noextfname, radius);
+	sprintf(paroutfile_cuda, "%s-r%d-omp-cuda.bmp", noextfname, radius);
 
 	bmp_read_img_from_file(inputfile, &imgin);
 	bmp_clone_empty_img(&imgin, &imgout);
@@ -335,7 +381,7 @@ int main(int argc, char *argv[])
 	bmp_write_data_to_file(paroutfile_cuda, &pimgout_cuda);
 		
 	printf("Total execution time (sequential): %lf\n", exectime_serial);
-	printf("Total execution time (omp loops): %lf\n", exectime_omp_cuda);
+	printf("Total execution time (omp CUDA):   %lf\n", exectime_omp_cuda);
 
 	bmp_img_free(&imgin);
 	bmp_img_free(&imgout);
