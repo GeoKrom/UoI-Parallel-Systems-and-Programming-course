@@ -67,7 +67,14 @@ If the program ends with .c, then write the command line
 ```
 
 ## Second Program
-
+The second program is about image filtering with the Gaussian Method. In order to do the filtering, OpenMP with CUDA was used. 
+There were two constraints with the problem. The first constraint was the number of threads, were they should be a factor of 32 for better performance. The second contraint was the number of blocks (or teams) in GPU. These constraints were used in order to compute with all th available cores of gpu for higher performnce and fast results.
+In order for the gpu to apply the gaussian blur filter, first OpenMP offloads all data and instructions to the gpu with the line code. The next part is to create the necessary blocks for the streaming multiprocessors to execute. In addition, the distribute clause evenly allocates the data to the master threads of a block. Last but not least the parallel for clause adds the information from master thread to all the other threads of the block to execute in parallel all the process. 
+```C
+    #pragma omp target teams distribute parallel for collapse(2)\
+        map(to: imgin->red[0:height*width], imgin->green[0:height*width], imgin->blue[0:height*width])\
+        map(to: imgout->red[0:height*width], imgout->green[0:height*width], imgout->blue[0:height*width])
+```
 ### How to run
 Here is used the LLVM/Clang compiler
 ```bash
