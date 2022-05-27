@@ -73,7 +73,7 @@ In order for the gpu to apply the gaussian blur filter, first OpenMP offloads al
 ```C
     #pragma omp target teams distribute parallel for collapse(2)\
         map(to: imgin->red[0:height*width], imgin->green[0:height*width], imgin->blue[0:height*width])\
-        map(to: imgout->red[0:height*width], imgout->green[0:height*width], imgout->blue[0:height*width])
+        map(tofrom: imgout->red[0:height*width], imgout->green[0:height*width], imgout->blue[0:height*width])
 ```
 ### How to run
 Here is used the LLVM/Clang compiler
