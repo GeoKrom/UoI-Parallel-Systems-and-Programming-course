@@ -248,9 +248,9 @@ void gaussian_blur_omp_device(int radius, img_t *imgin, img_t *imgout)
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
 
 	#pragma omp target teams distribute parallel for collapse(2)\
-		 num_teams(15) num_threads(256) private(row, col) firstprivate(redSum, greenSum, blueSum, weightSum)\
-		 map(to: imgin->red[0:width],imgin->green[0:width],imgin->blue[0:width])\
-		  map(tofrom: imgout->red[0:width],imgout->green[0:width],imgout->blue[0:width])
+		num_teams(300) num_threads(1024) private(row, col) firstprivate(redSum, greenSum, blueSum, weightSum)\
+		map(to: imgin->red[0:height*width],imgin->green[0:height*width],imgin->blue[0:height*width])\
+		map(tofrom: imgout->red[0:height*width],imgout->green[0:height*width],imgout->blue[0:height*width]) 
 	{
 		for (i = 0; i < height; i++)
 		{
@@ -326,11 +326,11 @@ char *remove_ext(char *str, char extsep, char pathsep)
 int main(int argc, char *argv[]) 
 {
 	int i, j, radius;
-	double exectime_serial = 0.0, exectime_omp_cuda = 0.0;
+	double exectime_serial = 0.0, exectime_omp_device = 0.0;
 	struct timeval start, stop; 
 	char *inputfile, *noextfname;   
-	char seqoutfile[128], paroutfile_cuda[128];
-	img_t imgin, imgout, pimgout_cuda;
+	char seqoutfile[128], paroutfile_device[128];
+	img_t imgin, imgout, pimgout_device;
 
 	if (argc < 3)
 	{
@@ -351,14 +351,14 @@ int main(int argc, char *argv[])
 
 	noextfname = remove_ext(inputfile, '.', '/');
 	sprintf(seqoutfile, "%s-r%d-serial.bmp", noextfname, radius);
-	sprintf(paroutfile_cuda, "%s-r%d-omp-cuda.bmp", noextfname, radius);
+	sprintf(paroutfile_device, "%s-r%d-omp-device.bmp", noextfname, radius);
 
 	bmp_read_img_from_file(inputfile, &imgin);
 	bmp_clone_empty_img(&imgin, &imgout);
-	bmp_clone_empty_img(&imgin, &pimgout_cuda);
+	bmp_clone_empty_img(&imgin, &pimgout_device);
 	bmp_rgb_alloc(&imgin);
 	bmp_rgb_alloc(&imgout);
-	bmp_rgb_alloc(&pimgout_cuda);
+	bmp_rgb_alloc(&pimgout_device);
 
 	printf("<<< Gaussian Blur (h=%d,w=%d,r=%d) >>>\n", imgin.header.height, 
 	       imgin.header.width, radius);
@@ -373,19 +373,19 @@ int main(int argc, char *argv[])
 	bmp_data_from_rgb(&imgout);
 	bmp_write_data_to_file(seqoutfile, &imgout);
 
-	/* Run & time OpenMP Gaussian Blur (w/ CUDA) */
-	exectime_omp_cuda = timeit(gaussian_blur_omp_device, radius, &imgin, &pimgout_cuda);
+	/* Run & time OpenMP Gaussian Blur (w/ CUDA device) */
+	exectime_omp_device = timeit(gaussian_blur_omp_device, radius, &imgin, &pimgout_device);
 
 	/* Save the results (parallel w/ CUDA) */
-	bmp_data_from_rgb(&pimgout_cuda);
-	bmp_write_data_to_file(paroutfile_cuda, &pimgout_cuda);
+	bmp_data_from_rgb(&pimgout_device);
+	bmp_write_data_to_file(paroutfile_device, &pimgout_device);
 		
-	printf("Total execution time (sequential): %lf\n", exectime_serial);
-	printf("Total execution time (omp CUDA):   %lf\n", exectime_omp_cuda);
+	printf("Total execution time (sequential): 	  %lf\n", exectime_serial);
+	printf("Total execution time (omp CUDA device):   %lf\n", exectime_omp_device);
 
 	bmp_img_free(&imgin);
 	bmp_img_free(&imgout);
-	bmp_img_free(&pimgout_cuda);
+	bmp_img_free(&pimgout_device);
 
 	return 0;
 }
