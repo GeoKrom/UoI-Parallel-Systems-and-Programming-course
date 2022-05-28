@@ -82,3 +82,5 @@ Here is used the LLVM/Clang compiler
     ./gb <radius> <input_image.bmp>
 ```
 # Assignment 3
+
+On this assignment was used the [OpenMPI API](https://www.open-mpi.org/) in order to create parallel programs from certain applications.
