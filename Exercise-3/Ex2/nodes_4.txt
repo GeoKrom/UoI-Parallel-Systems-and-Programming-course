@@ -1,0 +1,4 @@
+localhost
+opti7020ws02
+opti7020ws03
+opti7020ws04
