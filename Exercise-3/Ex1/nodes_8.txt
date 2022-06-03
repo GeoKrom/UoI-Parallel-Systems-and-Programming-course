@@ -1,8 +1,0 @@
-localhost
-opti7020ws02
-opti7020ws03
-opti7020ws04
-opti7020ws05
-opti7020ws06
-opti7020ws07
-opti7020ws08
