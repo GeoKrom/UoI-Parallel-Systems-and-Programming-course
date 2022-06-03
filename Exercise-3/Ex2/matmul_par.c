@@ -10,9 +10,9 @@
 #include <omp.h>
 
 #define N 2048
-#define Afile "Amat2048.txt"
-#define Bfile "Bmat2048.txt"
-#define Cfile "Cmat2048.txt"
+#define Afile "Amat2048"
+#define Bfile "Bmat2048"
+#define Cfile "CmatPar2048"
 #define _NUM_THREADS 4
 
 int A[N][N], B[N][N], C[N][N];
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-    WORK = (N/nproc);
+    WORK = N/(_NUM_THREADS*nproc);
 
     if(myid == 0){
         /* Read A & B matrices from files
@@ -75,8 +75,8 @@ int main(int argc, char **argv)
         overheads = total - (t4 - t3);
         comp_time = t4 - t3;
         /* Save result in file */
-	    writemat("CmatPar2048", (int *) C, N);
-        printf("Total time: %lf \n Overheads time: %lf \nComputation time: %lf \n", total, overheads, comp_time);
+	    writemat(Cfile, (int *) C, N);
+        printf("Total time: %lf \nOverheads time: %lf \nComputation time: %lf \n", total, overheads, comp_time);
     }
 	
 
