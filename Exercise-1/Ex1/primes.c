@@ -48,7 +48,7 @@ void openmp_primes(long int n) {
 	 * Don't add/remove/change global variables
 	 */
 	omp_set_num_threads(4);
-	#pragma omp parallel private(num, divisor, quotient, remainder) reduction(+:count)
+	#pragma omp parallel private(num, divisor, quotient, remainder) reduction(max: lastprime) reduction(+:count)
 	{
 		#pragma omp for schedule(static, 1000)
 			for (i = 0; i < (n-1)/2; ++i) {    /* For every odd number */
