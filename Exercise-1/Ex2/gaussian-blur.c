@@ -245,7 +245,7 @@ void gaussian_blur_omp_loops(int radius, img_t *imgin, img_t *imgout)
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
 	
 	omp_set_num_threads(4);
-	#pragma omp parallel private(i, j, row, col, weightSum, redSum, greenSum, blueSum)
+	#pragma omp parallel private(i, j, row, col) firstprivate(weightSum, redSum, greenSum, blueSum)
 	{
 		#pragma omp for schedule(static)
 			for (i = 0; i < height; i++)
@@ -293,7 +293,7 @@ void gaussian_blur_omp_tasks(int radius, img_t *imgin, img_t *imgout)
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
 	
 	omp_set_num_threads(4);
-	#pragma omp parallel private(i, j, row, col, weightSum, redSum, greenSum, blueSum)
+	#pragma omp parallel private(i, j, row, col) firstprivate(weightSum, redSum, greenSum, blueSum)
 	{
 		#pragma omp single nowait
 		{
