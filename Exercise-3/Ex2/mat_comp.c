@@ -7,7 +7,7 @@
 
 #define N 2048
 
-int correctCMat[N][N], C[N][N];
+int parCMat[N][N], C[N][N];
 int readmat(char *fname, int *mat, int n),
     writemat(char *fname,int *mat, int n);
 
@@ -17,7 +17,7 @@ int main(){
 
     printf("Comparing matrices...\n");
     
-    if(readmat("correctCMat", (int *) correctCMat, N) < 0){
+    if(readmat("CMatPar", (int *) parCMat, N) < 0){
         exit(1 + printf("File problem!\n"));
     }
     
@@ -27,7 +27,7 @@ int main(){
 
     for(i = 0; i < N; i++){
         for(j = 0; j < N; j++){
-            if(correctCMat[i][j] != C[i][j]){
+            if(parCMat[i][j] != C[i][j]){
                 printf("Output Matrix from parallel program is incorrect!\n");
                 exit(1);
             }
@@ -41,41 +41,36 @@ int main(){
 
 #define _mat(i,j) (mat[(i)*n + (j)])
 
-int readmat(char *fname, int *mat, int n){
 
-    FILE *fp;
-    int i, j;
-
-    if((fp = fopen(fname, "r")) == NULL){
-        return -1;
-    }
-
-    for(i = 0; i < n; i++){
-        for(j = 0; j < n; j++){
-            if(fscanf(fp, "%d", &_mat(i, j)) == EOF){
-                fclose(fp);
-                return -1;
-            }
-        }
-    }
-    fclose(fp);
-    return 0;
+int readmat(char *fname, int *mat, int n)
+{
+	FILE *fp;
+	int  i, j;
+	
+	if ((fp = fopen(fname, "r")) == NULL)
+		return (-1);
+	for (i = 0; i < n; i++)
+		for (j = 0; j < n; j++)
+			if (fscanf(fp, "%d", &_mat(i,j)) == EOF)
+			{
+				fclose(fp);
+				return (-1); 
+			};
+	fclose(fp);
+	return (0);
 }
 
-int readmat(char *fname, int *mat, int n){
 
-    FILE *fp;
-    int i, j;
-
-    if((fp = fopen(fname, "w")) == NULL){
-        return -1;
-    }
-
-    for(i = 0; i < n; i++, fprintf(fp, "\n")){
-        for(j = 0; j < n; j++){
-            fprintf(fp, " %d", _mat(i, j));
-        }
-    }
-    fclose(fp);
-    return 0;
+int writemat(char *fname, int *mat, int n)
+{
+	FILE *fp;
+	int  i, j;
+	
+	if ((fp = fopen(fname, "w")) == NULL)
+		return (-1);
+	for (i = 0; i < n; i++, fprintf(fp, "\n"))
+		for (j = 0; j < n; j++)
+			fprintf(fp, " %d", _mat(i, j));
+	fclose(fp);
+	return (0);
 }
