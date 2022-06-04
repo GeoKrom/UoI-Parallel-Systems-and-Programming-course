@@ -1,7 +1,3 @@
-/* Name: George Krommydas
- * A.M.: 3260
- * Comparing Matrices Code
- */
 #include <stdio.h>
 #include <stdlib.h>
 
