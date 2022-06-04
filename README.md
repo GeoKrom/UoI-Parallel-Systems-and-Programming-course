@@ -101,10 +101,10 @@ These nodes have a quadcore processor each. So the number of processes will be 4
 ## Second Program
 
 The second program is about matrix multiplication with another matrix, using hybrid programming OpenMP + MPI. 
-Here collective communications were used, in order to distribute the data evenly to the nodes. With the help of OpenMP, parallel regions were created to compute the multiplication.
+Here collective communications were used, in order to distribute the data evenly to the nodes. With the help of OpenMP, parallel regions were created to compute the multiplication. On this program, it does not take into consideration the number of processes, but the number of nodes. Hence, the number of processes were created from OpenMP parallel region with the setting of threads number.
 
 ### How to run
 ```bash
     mpicc -fopenmp matmul_par.c -o matpar
-    mpirun -np X -hostfile nodes_Y matpar
+    mpirun -np Y -hostfile nodes_Y matpar
 ```
