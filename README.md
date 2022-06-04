@@ -1,6 +1,6 @@
 # Parallel-Systems-and-Programming-course
 
-Assignments for course CSE/MYE023 - Parallel Systems and Programming, Department of Computer Science and Engineering, UoI
+Assignments for course CSE/MYE023 - Parallel Systems and Programming, Department of Computer Science and Engineering, UoI.
 
 # Assignment 1
 On this assignment was used the [OpenMP API](https://www.openmp.org/) in order to create parallel programs from certain applications.
