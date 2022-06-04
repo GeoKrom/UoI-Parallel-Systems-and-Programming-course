@@ -83,13 +83,28 @@ Here is used the LLVM/Clang compiler
 ```
 # Assignment 3
 
-On this assignment was used the [OpenMPI API](https://www.open-mpi.org/) in order to create parallel programs from certain applications.
+On this assignment was used the [OpenMPI API](https://www.open-mpi.org/) in order to create parallel programs from certain applications. 
+Also was used and [OpenMP](https://www.openmp.org/) for hybrid programming.
 
 ## First Program
 
-### How to run
+The first program is about image filtering with Gauss Method and the use of MPI. 
+In order to use MPI hostfiles were created with its hostfile containted the localhost and other computers. 
+In particular, here where used three different hostfiles (or virtual machines), with the number would be 2, 4 or 8. 
+These nodes have a quadcore processor each. So the number of processes will be 4xY = X, where Y is the number of nodes containt into the hostfile.
 
+### How to run
+```bash
+    mpicc gaussian-blur.c -lm -o gb
+    mpirun -np X -hostfile nodes_Y gb <radius> <input_image.bmp>
+```
 ## Second Program
 
-### How to run
+The second program is about matrix multiplication with another matrix, using hybrid programming OpenMP + MPI. 
+Here collective communications were used, in order to distribute the data evenly to the nodes. With the help of OpenMP, parallel regions were created to compute the multiplication.
 
+### How to run
+```bash
+    mpicc -fopenmp matmul_par.c -o matpar
+    mpirun -np X -hostfile nodes_Y matpar
+```
