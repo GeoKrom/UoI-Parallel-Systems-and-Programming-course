@@ -78,7 +78,7 @@ In order for the gpu to apply the gaussian blur filter, first OpenMP offloads al
 ### How to run
 Here is used the LLVM/Clang compiler
 ```bash
-    clang -fopenmp -fopenmp-targets="nvptx64-nvidia-cuda" -lm gaussian-blur.c -o gb
+    clang -fopenmp -fopenmp-targets="nvptx64-nvidia-cuda" gaussian-blur.c -lm -o gb
     ./gb <radius> <input_image.bmp>
 ```
 # Assignment 3
