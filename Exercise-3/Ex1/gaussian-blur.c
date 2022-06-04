@@ -42,7 +42,7 @@ typedef struct img_
 } img_t;
 
 void gaussian_blur_serial(int, img_t *, img_t *);
-void gaussian_blur_mpi(int, img_t *, img_t *);
+void gaussian_blur_mpi(int, img_t *, img_t *, int, int);
 
 
 /* START of BMP utility functions */
@@ -235,10 +235,48 @@ void gaussian_blur_serial(int radius, img_t *imgin, img_t *imgout)
 }
 
 
-/* Parallel Gaussian Blur with OpenMP loop parallelization */
+/* Parallel Gaussian Blur with MPI parallelization */
 void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int nproc)
 {
-	/* TODO: Implement parallel Gaussian Blur using OpenMP loop parallelization */
+	/* TODO: Implement parallel Gaussian Blur using MPI parallelization */
+	int i, j, WORK;
+	int width = imgin->header.width, height = imgin->header.height;
+	double row, col;
+	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
+
+	WORK = height/nproc;
+
+	for (i = 0; i < WORK; i++)
+	{
+		for (j = 0; j < width ; j++) 
+		{
+			for (row = i-radius; row <= i + radius; row++)
+			{
+				for (col = j-radius; col <= j + radius; col++) 
+				{
+					int x = clamp(col, 0, width-1);
+					int y = clamp(row, 0, height-1);
+					int tempPos = y * width + x;
+					double square = (col-j)*(col-j)+(row-i)*(row-i);
+					double sigma = radius*radius;
+					double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
+
+					redSum += imgin->red[tempPos] * weight;
+					greenSum += imgin->green[tempPos] * weight;
+					blueSum += imgin->blue[tempPos] * weight;
+					weightSum += weight;
+				}    
+			}
+			imgout->red[i*width+j] = round(redSum/weightSum);
+			imgout->green[i*width+j] = round(greenSum/weightSum);
+			imgout->blue[i*width+j] = round(blueSum/weightSum);
+
+			redSum = 0;
+			greenSum = 0;
+			blueSum = 0;
+			weightSum = 0;
+		}
+	}
 }
 
 double timeit(void (*func)(), int radius, 
@@ -279,77 +317,90 @@ char *remove_ext(char *str, char extsep, char pathsep)
 
 int main(int argc, char *argv[]) 
 {
-	int i, j, radius, myid, nproc, WORK;
-	double exectime_serial = 0.0, exectime_mpi = 0.0, t1, t2, total, start, end, overheads;
+	int i, j, radius, myid, nproc;
+	double exectime_serial = 0.0, exectime_mpi = 0.0, t1, t2, total, start_com, end_com, overheads;
+	double w1, w2, w3, w4;
 	struct timeval start, stop; 
 	char *inputfile, *noextfname;   
 	char seqoutfile[128], paroutfile_mpi[128];
 	img_t imgin, imgout, pimgout_mpi;
+	MPI_Status status;
+
+	start_com = MPI_Wtime();
 	
-	MPI_status status;
 	MPI_Init(&argc, &argv);
-	start = MPI_Wtime();
-	if (argc < 3)
-	{
-		fprintf(stderr, "Syntax: %s <blur-radius> <filename>, \n\te.g. %s 2 500.bmp\n", 
-			argv[0], argv[0]);
-		fprintf(stderr, "Available images: 500.bmp, 1000.bmp, 1500.bmp\n");
-		exit(1);
-	}
+    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+    MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+	
+	if(myid == 0){
+		
+		w1 = MPI_Wtime();
+		if (argc < 3)
+		{
+			fprintf(stderr, "Syntax: %s <blur-radius> <filename>, \n\te.g. %s 2 500.bmp\n", 
+				argv[0], argv[0]);
+			fprintf(stderr, "Available images: 500.bmp, 1000.bmp, 1500.bmp\n");
+			exit(1);
+		}
+		
+		inputfile = argv[2];
+		radius = atoi(argv[1]);
 
-	inputfile = argv[2];
+		if (radius < 0)
+		{
+			fprintf(stderr, "Radius should be an integer >= 0; exiting.");
+			exit(1);
+		}
 
-	radius = atoi(argv[1]);
-	if (radius < 0)
-	{
-		fprintf(stderr, "Radius should be an integer >= 0; exiting.");
-		exit(1);
-	}
+		noextfname = remove_ext(inputfile, '.', '/');
+		sprintf(seqoutfile, "%s-r%d-serial.bmp", noextfname, radius);
+		sprintf(paroutfile_mpi, "%s-r%d-MPI.bmp", noextfname, radius);
 
-	noextfname = remove_ext(inputfile, '.', '/');
-	sprintf(seqoutfile, "%s-r%d-serial.bmp", noextfname, radius);
-	sprintf(paroutfile_mpi, "%s-r%d-omp-MPI.bmp", noextfname, radius);
+		bmp_read_img_from_file(inputfile, &imgin);
+		bmp_clone_empty_img(&imgin, &imgout);
+		bmp_clone_empty_img(&imgin, &pimgout_mpi);
+		bmp_rgb_alloc(&imgin);
+		bmp_rgb_alloc(&imgout);
+		bmp_rgb_alloc(&pimgout_mpi);
 
-	bmp_read_img_from_file(inputfile, &imgin);
-	bmp_clone_empty_img(&imgin, &imgout);
-	bmp_clone_empty_img(&imgin, &pimgout_mpi);
-	bmp_rgb_alloc(&imgin);
-	bmp_rgb_alloc(&imgout);
-	bmp_rgb_alloc(&pimgout_mpi);
-
-	printf("<<< Gaussian Blur (h=%d,w=%d,r=%d) >>>\n", imgin.header.height, 
+		printf("<<< Gaussian Blur (h=%d,w=%d,r=%d) >>>\n", imgin.header.height, 
 	       imgin.header.width, radius);
+		
+		/* Image data to R,G,B */
+		bmp_rgb_from_data(&imgin);
+		
+		/* Run & time serial Gaussian Blur */
+		exectime_serial = timeit(gaussian_blur_serial, radius, &imgin, &imgout);
 
-	/* Image data to R,G,B */
-	bmp_rgb_from_data(&imgin);
-
-	/* Run & time serial Gaussian Blur */
-	exectime_serial = timeit(gaussian_blur_serial, radius, &imgin, &imgout);
-
-	/* Save the results (serial) */
-	bmp_data_from_rgb(&imgout);
-	bmp_write_data_to_file(seqoutfile, &imgout);
-
+		/* Save the results (serial) */
+		bmp_data_from_rgb(&imgout);
+		bmp_write_data_to_file(seqoutfile, &imgout);
+		w2 = MPI_Wtime();
+	}
+	
 	/* Run & time MPI Gaussian Blur */
 	t1 = MPI_Wtime();
 	gaussian_blur_mpi(radius, &imgin, &imgout, myid, nproc);
 	t2 = MPI_Wtime();
-	exectime_mpi = t2 - t1;
-	/* Save the results (parallel w/ mpi) */
-	bmp_data_from_rgb(&pimgout_mpi);
-	bmp_write_data_to_file(paroutfile_mpi, &pimgout_mpi);
+	
+	
+	if(myid == 0){
+		/* Save the results (parallel w/ mpi) */
+		w3 = MPI_Wtime();
+		bmp_data_from_rgb(&pimgout_mpi);
+		bmp_write_data_to_file(paroutfile_mpi, &pimgout_mpi);
+		bmp_img_free(&imgin);
+		bmp_img_free(&imgout);
+		bmp_img_free(&pimgout_mpi);
+		w4 = MPI_Wtime();
+		end_com = MPI_Wtime();
+		exectime_mpi = t2 - t1;
+		total = (end_com - start_com) - (w2 - w1) - (w4 - w3);
+		overheads = total - exectime_mpi;
+		printf("Total execution time (sequential): %lf\n", exectime_serial);
+		printf("Total execution time (MPI): %lf\nOverheads time: %lf\nComputation time: %lf", total, overheads, exectime_mpi);
+	}		
 		
-	printf("Total execution time (sequential): %lf\n", exectime_serial);
-	printf("Total execution time (MPI): %lf\n Overheads time: %lf\n", exectime_mpi, overheads);
-	 
-	end = MPI_Wtime();	
-	total = end - start;
-	overheads = total - exectime_mpi;
-	
-	bmp_img_free(&imgin);
-	bmp_img_free(&imgout);
-	bmp_img_free(&pimgout_mpi);
-	
 	MPI_Finalize();
 
 	return 0;
