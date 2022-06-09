@@ -1,6 +1,4 @@
 /* Serial program for matrix-matrix product.
- *
- * VVD
  */
 
 #include <stdio.h>
@@ -50,7 +48,6 @@ int main()
 
 
 /* Utilities to read & write matrices from/to files
- * VVD
  */
 
 #define _mat(i,j) (mat[(i)*n + (j)])
