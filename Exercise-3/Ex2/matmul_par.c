@@ -1,3 +1,8 @@
+/* Name: George Krommydas
+ * A.M.: 3260 
+ * Parellel program for matrix-matrix product.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -17,7 +22,7 @@ int readmat(char *fname, int *mat, int n),
 int main(int argc, char **argv)
 {
 	int i, j, k, sum;
-    int WORK, nproc, myid, (*Aa)[N],(*Cc)[N];
+    int WORK, nproc, myid, (*Aa)[N],(*Bb)[N],(*Cc)[N];
     double start, end, t1, t2, total, t3, t4, overheads, comp_time;
     omp_set_num_threads(_NUM_THREADS);
     
@@ -25,14 +30,14 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-    WORK = N/(_NUM_THREADS*nproc);
+    
+	WORK = N/(_NUM_THREADS*nproc);
 
     if(myid == 0){
-        /* Read A & B matrices from files
-	     */
+        /* Read A & B matrices from files */
         printf("Parallel matrix multiplication...\n");
-        t1 = MPI_Wtime();
         
+		t1 = MPI_Wtime();
         if (readmat(Afile, (int *) A, N) < 0){
 		    exit( 1 + printf("file problem\n") );
         }
@@ -43,23 +48,23 @@ int main(int argc, char **argv)
     }
 	
     Aa = (int(*)[N]) malloc(WORK*N*sizeof(int));
+	Bb = (int(*)[N]) malloc(WORK*N*sizeof(int));
 	Cc = (int(*)[N]) malloc(WORK*N*sizeof(int));
 
 	MPI_Scatter(A, WORK*N, MPI_INT, Aa, WORK*N, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD);
-    
+	//MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(B, WORK*N, MPI_INT, Bb, WORK*N, MPI_INT, 0, MPI_COMM_WORLD);
     t3 = MPI_Wtime();
-
-    #pragma omp parallel for private(j, k) shared(A, B)
-        for (i = 0; i < WORK; i++){
+    
+	#pragma omp parallel for private(j, k, sum) shared(A, B, C)
+        for (i = 0; i < WORK; i++)
 		    for (j = 0; j < N; j++)
 		    {
 			    for (k = sum = 0; k < N; k++){
 				    sum += A[i][k]*B[k][j];
                 }
-			    C[i][j] = sum;
+			    C[i][j] = sum; 
 		    }
-        }
     t4 = MPI_Wtime();
 
     MPI_Gather(Cc, WORK*N, MPI_INT, C, N*WORK, MPI_INT, 0, MPI_COMM_WORLD);
@@ -69,7 +74,8 @@ int main(int argc, char **argv)
         total = (end - start) - (t2 - t1);
         overheads = total - (t4 - t3);
         comp_time = t4 - t3;
-        /* Save result in file */
+       
+	    /* Save result in file */
 	    writemat(Cfile, (int *) C, N);
         printf("Total time: %lf \nOverheads time: %lf \nComputation time: %lf \n", total, overheads, comp_time);
     }
@@ -80,8 +86,7 @@ int main(int argc, char **argv)
 }
 
 
-/* Utilities to read & write matrices from/to files
- */
+/* Utilities to read & write matrices from/to files */
 
 #define _mat(i,j) (mat[(i)*n + (j)])
 

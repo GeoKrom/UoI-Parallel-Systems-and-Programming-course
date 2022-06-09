@@ -1,4 +1,7 @@
-/* Serial program for matrix-matrix product. */
+/* Serial program for matrix-matrix product.
+ *
+ * VVD
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,13 +22,13 @@ int main()
 	struct timeval start, end;
 	double execution_time = 0.0;
 
-	/* Read A & B matrices from files
-	 */
+	/* Read A & B matrices from files */
 	if (readmat(Afile, (int *) A, N) < 0) 
 		exit( 1 + printf("file problem\n") );
 	if (readmat(Bfile, (int *) B, N) < 0) 
 		exit( 1 + printf("file problem\n") );
 	gettimeofday(&start, NULL);
+	
 	for (i = 0; i < N; i++)
 		for (j = 0; j < N; j++)
 		{
@@ -35,17 +38,20 @@ int main()
 		};
 
 	gettimeofday(&end, NULL);
-	/* Save result in file
-	 */
+	
 	execution_time = (double)(end.tv_sec - start.tv_sec)+ (double)(end.tv_usec - start.tv_usec)*1E-06;
 	printf("Total Serial Execution time: %lf\n", execution_time);
+	
+	/* Save result in file */
 	writemat(Cfile, (int *) C, N);
 
 	return (0);
 }
 
 
-/* Utilities to read & write matrices from/to files */
+/* Utilities to read & write matrices from/to files
+ * VVD
+ */
 
 #define _mat(i,j) (mat[(i)*n + (j)])
 

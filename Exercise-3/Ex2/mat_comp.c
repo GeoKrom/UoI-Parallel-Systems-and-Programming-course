@@ -1,3 +1,7 @@
+/* Name: George Krommydas
+ * A.M.: 3260
+ * Comparing Matrices Code
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -13,12 +17,12 @@ int main(){
 
     printf("Comparing matrices...\n");
     
-    if(readmat("CMatPar", (int *) parCMat, N) < 0){
-        exit(1 + printf("File problem!\n"));
+    if(readmat("CmatPar2048", (int *) parCMat, N) < 0){
+        exit(1 + printf("File problem in Par!\n"));
     }
     
     if(readmat("Cmat2048", (int *) C, N) < 0){
-        exit(1 + printf("File problem!\n"));
+        exit(1 + printf("File problem in Serial!\n"));
     }
 
     for(i = 0; i < N; i++){
