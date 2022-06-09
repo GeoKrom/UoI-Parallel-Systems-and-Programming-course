@@ -1,6 +1,4 @@
-/* Name: George Krommydas
- * A.M.: 3260 
- * Parellel program for matrix-matrix product.
+/* Parellel program for matrix-matrix product.
  */
 
 #include <stdio.h>
