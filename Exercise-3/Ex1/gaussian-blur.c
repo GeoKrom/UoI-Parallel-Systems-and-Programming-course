@@ -243,40 +243,123 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 	int width = imgin->header.width, height = imgin->header.height;
 	double row, col;
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
-
+	MPI_Status status;
+	//unsigned char *redChannelIn, *greenChannelIn, *blueChannelIn;
+	//unsigned char *redChannelOut, *greenChannelOut, *blueChannelOut;
+	
 	WORK = height/nproc;
+	
+	// redChannelIn = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
+	// greenChannelIn = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
+	// blueChannelIn = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
 
-	for (i = 0; i < WORK; i++)
-	{
-		for (j = 0; j < width ; j++) 
-		{
-			for (row = i-radius; row <= i + radius; row++)
-			{
-				for (col = j-radius; col <= j + radius; col++) 
-				{
-					int x = clamp(col, 0, width-1);
-					int y = clamp(row, 0, height-1);
-					int tempPos = y * width + x;
-					double square = (col-j)*(col-j)+(row-i)*(row-i);
-					double sigma = radius*radius;
-					double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
+	// redChannelOut = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
+	// greenChannelOut = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
+	// blueChannelOut = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char));
+	
+	//MPI_Scatter(imgin->red, WORK*width*height, MPI_UNSIGNED_CHAR, redChannelIn, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	//MPI_Scatter(imgin->green, WORK*width*height, MPI_UNSIGNED_CHAR, greenChannelIn, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	//MPI_Scatter(imgin->blue, WORK*width*height, MPI_UNSIGNED_CHAR, blueChannelIn, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	if(ID == 0){
 
-					redSum += imgin->red[tempPos] * weight;
-					greenSum += imgin->green[tempPos] * weight;
-					blueSum += imgin->blue[tempPos] * weight;
-					weightSum += weight;
-				}    
-			}
-			imgout->red[i*width+j] = round(redSum/weightSum);
-			imgout->green[i*width+j] = round(greenSum/weightSum);
-			imgout->blue[i*width+j] = round(blueSum/weightSum);
-
-			redSum = 0;
-			greenSum = 0;
-			blueSum = 0;
-			weightSum = 0;
+		for(i = 1; i < nproc; i++){
+			MPI_Send(imgin->red[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
+			MPI_Send(imgin->green[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
+			MPI_Send(imgin->blue[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
 		}
+		for (i = 0; i < WORK; i++)
+		{
+			for (j = 0; j < width ; j++) 
+			{
+				for (row = i-radius; row <= i + radius; row++)
+				{
+					for (col = j-radius; col <= j + radius; col++) 
+					{
+						int x = clamp(col, 0, width-1);
+						int y = clamp(row, 0, height-1);
+						int tempPos = y * width + x;
+						double square = (col-j)*(col-j)+(row-i)*(row-i);
+						double sigma = radius*radius;
+						double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
+
+						redSum += imgin->red[tempPos] * weight;
+						greenSum += imgin->green[tempPos] * weight;
+						blueSum += imgin->blue[tempPos] * weight;
+						weightSum += weight;
+					}    
+				}
+				imgout->red[i*width+j] = round(redSum/weightSum);
+				imgout->green[i*width+j] = round(greenSum/weightSum);
+				imgout->blue[i*width+j] = round(blueSum/weightSum);
+
+				redSum = 0;
+				greenSum = 0;
+				blueSum = 0;
+				weightSum = 0;
+			}
+		}
+		for(i = WORK; i < WORK*nproc; i++){
+			MPI_Recv(imgout->red, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			MPI_Recv(imgout->green, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			MPI_Recv(imgout->blue, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		}
+	} else {
+		
+		unsigned char red_temp[WORK][height];
+		unsigned char green_temp[WORK][height];
+		unsigned char blue_temp[WORK][height];
+
+		MPI_Recv(red_temp, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(green_temp, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(blue_temp, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+		for (i = 0; i < WORK; i++)
+		{
+			for (j = 0; j < width ; j++) 
+			{
+				for (row = i-radius; row <= i + radius; row++)
+				{
+					for (col = j-radius; col <= j + radius; col++) 
+					{
+						int x = clamp(col, 0, width-1);
+						int y = clamp(row, 0, height-1);
+						int tempPos = y * width + x;
+						double square = (col-j)*(col-j)+(row-i)*(row-i);
+						double sigma = radius*radius;
+						double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
+
+						redSum += imgin->red[tempPos] * weight;
+						greenSum += imgin->green[tempPos] * weight;
+						blueSum += imgin->blue[tempPos] * weight;
+						weightSum += weight;
+					}    
+				}
+				imgout->red[i*width+j] = round(redSum/weightSum);
+				imgout->green[i*width+j] = round(greenSum/weightSum);
+				imgout->blue[i*width+j] = round(blueSum/weightSum);
+
+				redSum = 0;
+				greenSum = 0;
+				blueSum = 0;
+				weightSum = 0;
+			}
+		}
+		MPI_Send(imgout->red, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK + i, MPI_COMM_WORLD);
+		MPI_Send(imgout->green, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK + i, MPI_COMM_WORLD);
+		MPI_Send(imgout->blue, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK + i, MPI_COMM_WORLD);
 	}
+	
+	//MPI_Gather(imgout->red, WORK*width*height, MPI_UNSIGNED_CHAR, redChannelOut, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	//MPI_Gather(imgout->green, WORK*width*height, MPI_UNSIGNED_CHAR, greenChannelOut, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+	//MPI_Gather(imgout->blue, WORK*width*height, MPI_UNSIGNED_CHAR, blueChannelOut, WORK*width*height, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+	// free(redChannelIn);
+	// free(greenChannelIn);
+	// free(blueChannelIn);
+	
+	// free(redChannelOut);
+	// free(greenChannelOut);
+	// free(blueChannelOut);
 }
 
 double timeit(void (*func)(), int radius, 
@@ -335,21 +418,24 @@ int main(int argc, char *argv[])
 	if(myid == 0){
 		
 		w1 = MPI_Wtime();
-		if (argc < 3)
+		if (argc < 6)
 		{
-			fprintf(stderr, "Syntax: %s <blur-radius> <filename>, \n\te.g. %s 2 500.bmp\n", 
-				argv[0], argv[0]);
+			fprintf(stderr, "Syntax: mpirun -np X -hostfile nodes_Y %s <blur-radius> <filename>, \n\te.g. mpirun -np 16 -hostfile nodes_4 %s 2 500.bmp\n", 
+				argv[5], argv[5]);
 			fprintf(stderr, "Available images: 500.bmp, 1000.bmp, 1500.bmp\n");
 			exit(1);
 		}
 		
-		inputfile = argv[2];
-		radius = atoi(argv[1]);
+		inputfile = argv[7];
+		radius = atoi(argv[6]);
 
 		if (radius < 0)
 		{
 			fprintf(stderr, "Radius should be an integer >= 0; exiting.");
 			exit(1);
+		}
+		for(i = 1; i < nproc; i++){
+			MPI_Send(&radius, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
 		}
 
 		noextfname = remove_ext(inputfile, '.', '/');
@@ -376,11 +462,13 @@ int main(int argc, char *argv[])
 		bmp_data_from_rgb(&imgout);
 		bmp_write_data_to_file(seqoutfile, &imgout);
 		w2 = MPI_Wtime();
+	} else {
+		MPI_Recv(&radius, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
 	}
-	
+	//MPI_Bcast(&radius, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	/* Run & time MPI Gaussian Blur */
 	t1 = MPI_Wtime();
-	gaussian_blur_mpi(radius, &imgin, &imgout, myid, nproc);
+	gaussian_blur_mpi(radius, &imgin, &pimgout_mpi, myid, nproc);
 	t2 = MPI_Wtime();
 	
 	
