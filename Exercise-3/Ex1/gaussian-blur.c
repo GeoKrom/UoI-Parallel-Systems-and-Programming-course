@@ -1,3 +1,8 @@
+/* Name: Georgios Krommydas
+ * A.M.: 3260
+ * Parallel Program for Gaussian Blur with MPI
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -305,9 +310,9 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 		}
 	} else {
 		
-		unsigned char red_temp[WORK][height];
-		unsigned char green_temp[WORK][height];
-		unsigned char blue_temp[WORK][height];
+		unsigned char red_temp[WORK];
+		unsigned char green_temp[WORK];
+		unsigned char blue_temp[WORK];
 
 		MPI_Recv(red_temp, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 		MPI_Recv(green_temp, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -328,9 +333,9 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 						double sigma = radius*radius;
 						double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
 
-						redSum += imgin->red[tempPos] * weight;
-						greenSum += imgin->green[tempPos] * weight;
-						blueSum += imgin->blue[tempPos] * weight;
+						redSum += red_temp[tempPos] * weight;
+						greenSum += green_temp[tempPos] * weight;
+						blueSum += blue_temp[tempPos] * weight;
 						weightSum += weight;
 					}    
 				}
@@ -464,6 +469,7 @@ int main(int argc, char *argv[])
 		w2 = MPI_Wtime();
 	} else {
 		MPI_Recv(&radius, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+		//MPI_Recv(&imgin, sizeof(imgin), );
 	}
 	//MPI_Bcast(&radius, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	/* Run & time MPI Gaussian Blur */
