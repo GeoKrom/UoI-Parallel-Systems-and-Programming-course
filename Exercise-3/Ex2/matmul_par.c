@@ -1,4 +1,6 @@
-/* Parellel program for matrix-matrix product.
+/* Name: George Krommydas
+ * A.M.: 3260 
+ * Parellel program for matrix-matrix product.
  */
 
 #include <stdio.h>
@@ -29,7 +31,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     
-	WORK = N/(_NUM_THREADS*nproc);
+	WORK = N/nproc;
 
     if(myid == 0){
         /* Read A & B matrices from files */
@@ -46,28 +48,30 @@ int main(int argc, char **argv)
     }
 	
     Aa = (int(*)[N]) malloc(WORK*N*sizeof(int));
-	Bb = (int(*)[N]) malloc(WORK*N*sizeof(int));
 	Cc = (int(*)[N]) malloc(WORK*N*sizeof(int));
 
 	MPI_Scatter(A, WORK*N, MPI_INT, Aa, WORK*N, MPI_INT, 0, MPI_COMM_WORLD);
-	//MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Scatter(B, WORK*N, MPI_INT, Bb, WORK*N, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD);
     t3 = MPI_Wtime();
     
-	#pragma omp parallel for private(j, k, sum) shared(A, B, C)
+	#pragma omp parallel for private(j, k, sum) shared(Aa, B, Cc) 
         for (i = 0; i < WORK; i++)
 		    for (j = 0; j < N; j++)
 		    {
 			    for (k = sum = 0; k < N; k++){
-				    sum += A[i][k]*B[k][j];
+				    sum += Aa[i][k]*B[k][j];
                 }
-			    C[i][j] = sum; 
+			    Cc[i][j] = sum; 
 		    }
     t4 = MPI_Wtime();
 
     MPI_Gather(Cc, WORK*N, MPI_INT, C, N*WORK, MPI_INT, 0, MPI_COMM_WORLD);
     
-    if(myid == 0){
+	free(Aa);
+	free(Bb);
+	free(Cc);
+    
+	if(myid == 0){
         end = MPI_Wtime();
         total = (end - start) - (t2 - t1);
         overheads = total - (t4 - t3);
