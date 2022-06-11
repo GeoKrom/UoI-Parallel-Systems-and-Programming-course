@@ -1,6 +1,4 @@
-/* Name: George Krommydas
- * A.M.: 3260 
- * Parallel program for matrix-matrix multiplication.
+/* Parallel program for matrix-matrix multiplication.
  */
 
 #include <stdio.h>
