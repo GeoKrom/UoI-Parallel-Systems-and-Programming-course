@@ -1,4 +1,6 @@
-/* Parellel program for matrix-matrix product.
+/* Name: George Krommydas
+ * A.M.: 3260 
+ * Parallel program for matrix-matrix multiplication.
  */
 
 #include <stdio.h>
@@ -22,14 +24,13 @@ int main(int argc, char **argv)
 	int i, j, k, sum;
     int WORK, nproc, myid, (*Aa)[N],(*Bb)[N],(*Cc)[N];
     double start, end, t1, t2, total, t3, t4, overheads, comp_time;
-    omp_set_num_threads(_NUM_THREADS);
     
     start = MPI_Wtime();
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     
-	WORK = N/nproc;
+	WORK = N/nproc; // Number of blocks for each process
 
     if(myid == 0){
         /* Read A & B matrices from files */
@@ -45,13 +46,14 @@ int main(int argc, char **argv)
         t2 = MPI_Wtime();
     }
 	
-    Aa = (int(*)[N]) malloc(WORK*N*sizeof(int));
-	Cc = (int(*)[N]) malloc(WORK*N*sizeof(int));
+    Aa = (int(*)[N]) malloc(WORK*N*sizeof(int)); // Sub Matrix of A with continious lines for every process
+	Cc = (int(*)[N]) malloc(WORK*N*sizeof(int)); // Sub Matrix of C with continious lines of every calculation
 
-	MPI_Scatter(A, WORK*N, MPI_INT, Aa, WORK*N, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD);
-    t3 = MPI_Wtime();
+	MPI_Scatter(A, WORK*N, MPI_INT, Aa, WORK*N, MPI_INT, 0, MPI_COMM_WORLD); // Scatters the sub matrices to every process
+	MPI_Bcast(B, N*N, MPI_INT, 0, MPI_COMM_WORLD); // Broadcasts B matrix to every process
     
+	t3 = MPI_Wtime();
+    omp_set_num_threads(_NUM_THREADS);
 	#pragma omp parallel for private(j, k, sum) shared(Aa, B, Cc) 
         for (i = 0; i < WORK; i++)
 		    for (j = 0; j < N; j++)
@@ -63,10 +65,9 @@ int main(int argc, char **argv)
 		    }
     t4 = MPI_Wtime();
 
-    MPI_Gather(Cc, WORK*N, MPI_INT, C, N*WORK, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(Cc, WORK*N, MPI_INT, C, N*WORK, MPI_INT, 0, MPI_COMM_WORLD); // Gathers every sub matrix Cc and joins them to 0 process for the final matrix C
     
 	free(Aa);
-	free(Bb);
 	free(Cc);
     
 	if(myid == 0){
