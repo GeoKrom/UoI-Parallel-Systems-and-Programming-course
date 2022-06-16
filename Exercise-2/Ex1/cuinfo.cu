@@ -29,7 +29,7 @@ void cuinfo_print_devinfo()
 		printf("Device CUDA compute capability: %d.%d\n", dev_prop.major, dev_prop.minor);
 		printf("Device number of streaming multiprocessors: %d\n", dev_prop.multiProcessorCount);
 		printf("Device max number of threads per block: %d\n", dev_prop.maxThreadsPerBlock);
-		printf("Device size of global memory: %lu bytes (= 24 Gbytes)\n", dev_prop.totalGlobalMem);
+		printf("Device size of global memory: %lu bytes\n", dev_prop.totalGlobalMem);
 		printf("Device size of shared memory per block: %lu bytes\n", dev_prop.sharedMemPerBlock);
 		printf("-------------------------------------------------------------\n");
 	}
