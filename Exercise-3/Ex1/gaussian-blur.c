@@ -1,4 +1,6 @@
-/* Parallel Program for Gaussian Blur with MPI
+/* Name: Georgios Krommydas
+ * A.M.: 3260
+ * Parallel Program for Gaussian Blur with MPI
 */
 
 #include <stdio.h>
@@ -242,26 +244,21 @@ void gaussian_blur_serial(int radius, img_t *imgin, img_t *imgout)
 void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int nproc)
 {
 	/* TODO: Implement parallel Gaussian Blur using MPI parallelization */
-	int i, j, WORK;
+	int i, j, k, WORK;
 	int width = imgin->header.width, height = imgin->header.height;
 	double row, col;
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
 	unsigned char *red_buffer, *green_buffer, *blue_buffer;
 	MPI_Status status;
-	
+
 	WORK = height/nproc; // Rows per Process
-	red_buffer = (unsigned char *) calloc(WORK*height, sizeof(unsigned char)); // Red channel for every other process
-	green_buffer = (unsigned char *) calloc(WORK*height, sizeof(unsigned char)); // Green channel for every other process
-	blue_buffer = (unsigned char *) calloc(WORK*height, sizeof(unsigned char)); // Blue channel for every other process
+	red_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Red channel for every other process
+	green_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Green channel for every other process
+	blue_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Blue channel for every other process
+	int size = width*height*sizeof(unsigned char);
 	
-	MPI_Bcast(&radius, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	if(ID == 0){
-		for(i = 1; i < nproc; i++){
-			MPI_Send(&imgin->red[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
-			MPI_Send(&imgin->green[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
-			MPI_Send(&imgin->blue[i*WORK], WORK*height, MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD);
-		}
-		for (i = 0; i < WORK; i++)
+		for (i = ID*WORK; i < (ID+1)*WORK; i++)
 		{
 			for (j = 0; j < width ; j++)
 			{
@@ -270,7 +267,7 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 					for (col = j-radius; col <= j + radius; col++) 
 					{
 						int x = clamp(col, 0, width-1);
-						int y = clamp(row, 0, WORK-1);
+						int y = clamp(row, 0, height-1);
 						int tempPos = y * width + x;
 						double square = (col-j)*(col-j)+(row-i)*(row-i);
 						double sigma = radius*radius;
@@ -292,18 +289,21 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 				weightSum = 0;
 			}
 		}
-		for(i = WORK; i < WORK*nproc; i++){
-			MPI_Recv(imgout->red, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-			MPI_Recv(imgout->green, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-			MPI_Recv(imgout->blue, WORK*height, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		for(k = 1; k < nproc; k++){	
+			MPI_Recv(red_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			MPI_Recv(green_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			MPI_Recv(blue_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+			for(i = k*WORK; i < (k+1)*WORK; i++){
+				for(j = 0; j < width; j++){
+					imgout->red[i*width+j] = red_buffer[i*width+j];
+					imgout->green[i*width+j] = green_buffer[i*width+j];
+					imgout->blue[i*width+j] = blue_buffer[i*width+j];
+				}
+			}
 		}
 	}else{
-		
-		MPI_Recv(red_buffer, WORK*height, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD, &status);
-		MPI_Recv(green_buffer, WORK*height, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD, &status);
-		MPI_Recv(blue_buffer, WORK*height, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD, &status);
-		
-		for (i = 0; i < WORK; i++)
+		for (i = ID*WORK; i < (ID+1)*WORK; i++)
 		{
 			for (j = 0; j < width ; j++)
 			{
@@ -312,35 +312,34 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 					for (col = j-radius; col <= j + radius; col++) 
 					{
 						int x = clamp(col, 0, width-1);
-						int y = clamp(row, 0, WORK-1);
+						int y = clamp(row, 0, height-1);
 						int tempPos = y * width + x;
 						double square = (col-j)*(col-j)+(row-i)*(row-i);
 						double sigma = radius*radius;
 						double weight = exp(-square / (2*sigma)) / (3.14*2*sigma);
 
-						redSum += red_buffer[tempPos] * weight;
-						greenSum += green_buffer[tempPos] * weight;
-						blueSum += blue_buffer[tempPos] * weight;
+						redSum += imgin->red[tempPos] * weight;
+						greenSum += imgin->green[tempPos] * weight;
+						blueSum += imgin->blue[tempPos] * weight;
 						weightSum += weight;
 					}    
 				}
-				imgout->red[i*width+j] = round(redSum/weightSum);
-				imgout->green[i*width+j] = round(greenSum/weightSum);
-				imgout->blue[i*width+j] = round(blueSum/weightSum);
+				red_buffer[i*width+j] = round(redSum/weightSum);
+				green_buffer[i*width+j] = round(greenSum/weightSum);
+				blue_buffer[i*width+j] = round(blueSum/weightSum);
 				
 				redSum = 0;
 				greenSum = 0;
 				blueSum = 0;
 				weightSum = 0;
 			}
+			MPI_Send(red_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(green_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(blue_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
 		}
-		for(i = 0; i < WORK; i++){
-			MPI_Send(imgout->red, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK+i, MPI_COMM_WORLD);
-			MPI_Send(imgout->green, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK+i, MPI_COMM_WORLD);
-			MPI_Send(imgout->blue, WORK*height, MPI_UNSIGNED_CHAR, 0, ID*WORK+i, MPI_COMM_WORLD);
-		}
+		
 	}
-	
+
 	free(red_buffer);
 	free(green_buffer);
 	free(blue_buffer);
@@ -444,7 +443,7 @@ int main(int argc, char *argv[])
 		bmp_write_data_to_file(seqoutfile, &imgout);
 		w2 = MPI_Wtime();
 	}
-	
+	MPI_Bcast(&radius, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	
 	/* Run & time MPI Gaussian Blur */
 	t1 = MPI_Wtime();
@@ -466,7 +465,7 @@ int main(int argc, char *argv[])
 		total = (end_com - start_com) - (w2 - w1) - (w4 - w3);
 		overheads = total - exectime_mpi;
 		printf("Total execution time (sequential): %lf\n", exectime_serial);
-		printf("Total execution time (MPI): %lf\nOverheads time: %lf\nComputation time: %lf", total, overheads, exectime_mpi);	
+		printf("Total execution time (MPI): %lf\nOverheads time: %lf\nComputation time: %lf\n", total, overheads, exectime_mpi);	
 	}	
 	MPI_Finalize();
 
