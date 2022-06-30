@@ -1,6 +1,4 @@
-/* Name: Georgios Krommydas
- * A.M.: 3260
- * Parallel Program for Gaussian Blur with MPI
+/* Parallel Program for Gaussian Blur with MPI
 */
 
 #include <stdio.h>
