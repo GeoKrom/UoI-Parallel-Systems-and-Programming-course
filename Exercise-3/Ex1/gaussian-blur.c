@@ -1,5 +1,7 @@
-/* Parallel Program for Gaussian Blur with MPI
- */
+/* Name: Georgios Krommydas
+ * A.M.: 3260
+ * Parallel Program for Gaussian Blur with MPI
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -248,15 +250,17 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 	double weightSum = 0.0, redSum = 0.0, greenSum = 0.0, blueSum = 0.0;
 	unsigned char *red_buffer, *green_buffer, *blue_buffer;
 	MPI_Status status;
-
-	WORK = height/nproc; // Rows per Process
-	red_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Red channel for every other process
-	green_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Green channel for every other process
-	blue_buffer = (unsigned char *) malloc(width*height*sizeof(unsigned char)); // Blue channel for every other process
-	int size = width*height*sizeof(unsigned char);
 	
-	if(ID == 0){
-		for (i = ID*WORK; i < (ID+1)*WORK; i++)
+	WORK = height/nproc; // Rows per Process
+	red_buffer = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char)); // Red channel for every other process
+	green_buffer = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char)); // Green channel for every other process
+	blue_buffer = (unsigned char *) malloc(height*width*WORK*sizeof(unsigned char)); // Blue channel for every other process
+	
+	int size = height*width*WORK*sizeof(unsigned char);
+	
+	if(ID == 0) {
+		
+		for (i = 0; i < WORK; i++)
 		{
 			for (j = 0; j < width ; j++)
 			{
@@ -287,7 +291,7 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 				weightSum = 0;
 			}
 		}
-		for(k = 1; k < nproc; k++){	
+		for(k = 1; k < nproc; k++){
 			MPI_Recv(red_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 			MPI_Recv(green_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 			MPI_Recv(blue_buffer, size, MPI_UNSIGNED_CHAR, k, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -300,7 +304,9 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 				}
 			}
 		}
+
 	}else{
+		
 		for (i = ID*WORK; i < (ID+1)*WORK; i++)
 		{
 			for (j = 0; j < width ; j++)
@@ -322,22 +328,29 @@ void gaussian_blur_mpi(int radius, img_t *imgin, img_t *imgout, int ID, int npro
 						weightSum += weight;
 					}    
 				}
-				red_buffer[i*width+j] = round(redSum/weightSum);
-				green_buffer[i*width+j] = round(greenSum/weightSum);
-				blue_buffer[i*width+j] = round(blueSum/weightSum);
+				imgout->red[i*width+j] = round(redSum/weightSum);
+				imgout->green[i*width+j] = round(greenSum/weightSum);
+				imgout->blue[i*width+j] = round(blueSum/weightSum);
 				
 				redSum = 0;
 				greenSum = 0;
 				blueSum = 0;
 				weightSum = 0;
 			}
-			MPI_Send(red_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(green_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(blue_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
+			
 		}
+		for(i = ID*WORK; i < (ID+1)*WORK; i++){
+    		for(j = 0; j < width; j++){
+    	 		red_buffer[i*width+j] = imgout->red[i*width+j];
+		  		green_buffer[i*width+j] = imgout->green[i*width+j];
+				blue_buffer[i*width+j] = imgout->blue[i*width+j];
+			}
+		}
+		MPI_Send(red_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
+		MPI_Send(green_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
+		MPI_Send(blue_buffer, size, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
 		
 	}
-
 	free(red_buffer);
 	free(green_buffer);
 	free(blue_buffer);
@@ -381,7 +394,7 @@ char *remove_ext(char *str, char extsep, char pathsep)
 
 int main(int argc, char *argv[]) 
 {
-	int i, j, radius, myid, nproc;
+	int i, j, radius, myid, nproc, WORK;
 	double exectime_serial = 0.0, exectime_mpi = 0.0, t1, t2, total, start_com, end_com, overheads;
 	double w1, w2, w3, w4;
 	struct timeval start, stop; 
